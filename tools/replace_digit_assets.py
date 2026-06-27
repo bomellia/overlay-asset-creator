@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import configparser
 import shutil
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -23,7 +24,19 @@ except ModuleNotFoundError:
     from replace_ui_assets import is_rainbow_theme, render_ui_asset, themed_color, themed_fill
 
 
-ROOT = Path(__file__).resolve().parents[1]
+def find_runtime_root() -> Path:
+    if not getattr(sys, "frozen", False):
+        return Path(__file__).resolve().parents[1]
+
+    executable_dir = Path(sys.executable).resolve().parent
+    candidates = (Path.cwd(), executable_dir, executable_dir.parent)
+    for candidate in candidates:
+        if (candidate / "assets").is_dir():
+            return candidate.resolve()
+    return executable_dir
+
+
+ROOT = find_runtime_root()
 ASSETS_DIR = ROOT / "assets"
 SCORE_DIR = ROOT / "assets" / "score" / "digit"
 SCORE_UI_DIR = ROOT / "assets" / "score"
@@ -366,6 +379,9 @@ def resolve_font(value: str) -> Path:
     candidate = Path(value).expanduser()
     if candidate.exists():
         return candidate.resolve()
+    rooted_candidate = ROOT / candidate
+    if rooted_candidate.exists():
+        return rooted_candidate.resolve()
 
     if WINDOWS_FONT_DIR.exists():
         lowered = value.lower()

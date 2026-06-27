@@ -242,6 +242,52 @@ combo_scale = 0.92
 
 `combo_scale`はキャンバス寸法を変えず、コンボの前面・背面・COMBO文字を中央基準で縮小します。
 
+### アセット生成EXE
+
+ビルドにはPython、Pillow、PyInstallerが必要ですが、生成されたEXEの実行環境にはPythonやPillowは不要です。
+
+```powershell
+.\build_asset_generator.ps1
+```
+
+または直接ビルド:
+
+```powershell
+python -m PyInstaller --noconfirm --clean --onefile `
+  --name build_assets `
+  --distpath dist `
+  build_assets.py
+```
+
+出力:
+
+```text
+dist/build_assets.exe
+```
+
+リポジトリに同梱されたEXEはそのまま利用できます。再ビルドが必要な場合のみPython環境を用意してください。
+
+EXEにはPythonと画像処理コードだけが含まれます。編集可能なINI、入力アセット、フォントは外部ファイルとして必要です。
+
+```text
+project/
+  build_assets.exe         # dist内のままでも実行可能
+  assets/
+  tools/
+    replace_digit_assets.ini
+  dependencies/
+    font/
+  output/
+```
+
+リポジトリ内の`dist/build_assets.exe`は、1階層上のプロジェクトルートを自動検出します。
+
+```powershell
+dist\build_assets.exe
+dist\build_assets.exe --config tools\my_skin.ini
+dist\build_assets.exe --dry-run
+```
+
 ## 配布時の注意
 
 コード、フォント、元ゲーム由来画像、背景テンプレートは、それぞれライセンスや再配布条件が異なる場合があります。Gitへ含める前に各素材の利用条件を確認してください。
