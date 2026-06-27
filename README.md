@@ -1,5 +1,6 @@
 # プロジェクト構成メモ
 アセット生成ツールです。
+toolsフォルダ内のiniを好きに書き換えて(必要に応じてフォントファイルを用意して)、
 build_assets.exeを実行して、
 生成されたoutput/assetsフォルダとdependenciesフォルダをoverlay側の同名フォルダと差し替えて使います。
 dependenciesにはジャケット生成のexeが入ってますが、依存ファイルごと差し替える必要があるのでdependencies丸々変えてください。
