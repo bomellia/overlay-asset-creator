@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pjsekai-overlay Placement Preview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f7f4;
+      --panel: #ffffff;
+      --ink: #1e2228;
+      --muted: #667085;
+      --line: #d9dee7;
+      --accent: #00a9c7;
+      --accent-2: #ff8bf4;
+      --selected: #ff5a91;
+      --shadow: 0 10px 30px rgba(20, 30, 50, .10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      padding: 7px 8px;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.92);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+    }
+
+    .title {
+      font-weight: 700;
+      margin-right: auto;
+      white-space: nowrap;
+    }
+
+    .status {
+      color: var(--muted);
+      min-width: 280px;
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(520px, 1fr) 430px;
+      gap: 12px;
+      padding: 12px;
+      min-height: 0;
+    }
+
+    .stage-panel,
+    .side-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-height: 0;
+    }
+
+    .stage-panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .stage-tools {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 4px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .canvas-wrap {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+      padding: 18px;
+      background:
+        linear-gradient(45deg, #eceff4 25%, transparent 25%),
+        linear-gradient(-45deg, #eceff4 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eceff4 75%),
+        linear-gradient(-45deg, transparent 75%, #eceff4 75%);
+      background-size: 22px 22px;
+      background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+    }
+
+    canvas {
+      display: block;
+      background: #10131a;
+      border-radius: 6px;
+      box-shadow: 0 16px 45px rgba(0, 0, 0, .22);
+      touch-action: none;
+    }
+
+    .side-panel {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .side-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 8px;
+    }
+
+    .selected-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr 108px;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .object-list {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #eef1f5;
+      padding: 7px 8px;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f7f9fc;
+      color: var(--muted);
+      font-weight: 600;
+      text-align: left;
+    }
+
+    tr {
+      cursor: pointer;
+    }
+
+    tr.selected {
+      background: #fff1f7;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .name-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .footer {
+      border-top: 1px solid var(--line);
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-wrap: wrap;
+      }
+
+      .status {
+        text-align: left;
+        min-width: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="title">Placement Preview</div>
+      <input id="fileInput" class="hidden" type="file" accept=".object,.exo,.txt">
+      <button id="openButton" class="primary">テンプレートを開く</button>
+      <button id="saveButton" disabled>保存</button>
+      <button id="downloadButton" disabled>ダウンロード</button>
+      <button id="resetButton" disabled>元に戻す</button>
+      <div id="status" class="status">`.object` または `.exo` を開いてください</div>
+    </header>
+
+    <main class="main">
+      <section class="stage-panel">
+        <div class="stage-tools">
+          <div class="field">
+            <label for="templateType">形式</label>
+            <select id="templateType">
+              <option value="auto">自動判定</option>
+              <option value="object">ExEdit2 .object</option>
+              <option value="exo">AviUtl .exo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="canvasSize">画面</label>
+            <select id="canvasSize">
+              <option value="auto">自動判定</option>
+              <option value="1920x1080">1920x1080</option>
+              <option value="1440x1080">1440x1080</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="zoom">ズーム</label>
+            <select id="zoom">
+              <option value="0.35">35%</option>
+              <option value="0.45">45%</option>
+              <option value="0.55" selected>55%</option>
+              <option value="0.7">70%</option>
+              <option value="1">100%</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="frameFilter">フレーム</label>
+            <input id="frameFilter" type="number" value="1" step="1">
+          </div>
+          <div class="field">
+            <label for="layerFilter">レイヤー</label>
+            <input id="layerFilter" type="text" placeholder="全て">
+          </div>
+          <div class="field">
+            <label for="showAll">表示</label>
+            <select id="showAll">
+              <option value="frame">フレーム内のみ</option>
+              <option value="all">全座標</option>
+            </select>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="stage" width="1056" height="594"></canvas>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <div class="side-header">
+          <div class="small" id="selectedLabel">未選択</div>
+          <div class="selected-grid">
+            <div class="field">
+              <label for="xInput">X</label>
+              <input id="xInput" type="number" step="0.01" disabled>
+            </div>
+            <div class="field">
+              <label for="yInput">Y</label>
+              <input id="yInput" type="number" step="0.01" disabled>
+            </div>
+          </div>
+        </div>
+        <div class="search-row">
+          <input id="search" type="text" placeholder="ファイル名・effect・IDで検索">
+          <button id="centerButton" disabled>中央へ</button>
+        </div>
+        <div class="object-list">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 64px;">ID</th>
+                <th style="width: 56px;">Layer</th>
+                <th>参照 / effect</th>
+                <th style="width: 76px;">X</th>
+                <th style="width: 76px;">Y</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="footer">
+          キャンバス上のボックスをドラッグすると、対応する `X=` / `Y=` の最初の数値を書き換えます。アニメーション指定や末尾のパラメータは保持します。
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      fileName: "",
+      fileHandle: null,
+      encoding: "utf-8",
+      originalText: "",
+      lines: [],
+      rawLines: [],
+      lineEndings: [],
+      modifiedLines: new Set(),
+      items: [],
+      selectedId: null,
+      dirty: false,
+      viewport: { width: 1920, height: 1080 },
+      drag: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const canvas = $("stage");
+    const ctx = canvas.getContext("2d");
+
+    const controls = [
+      "templateType", "canvasSize", "zoom", "frameFilter", "layerFilter",
+      "showAll", "search"
+    ];
+
+    for (const id of controls) {
+      $(id).addEventListener("input", () => {
+        if (id === "canvasSize") inferViewport();
+        render();
+      });
+    }
+
+    $("openButton").addEventListener("click", openTemplate);
+    $("saveButton").addEventListener("click", saveTemplate);
+    $("downloadButton").addEventListener("click", downloadTemplate);
+    $("resetButton").addEventListener("click", resetTemplate);
+    $("centerButton").addEventListener("click", centerSelected);
+    $("xInput").addEventListener("input", applySelectedInputs);
+    $("yInput").addEventListener("input", applySelectedInputs);
+    $("fileInput").addEventListener("change", openFallbackFile);
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerUp);
+
+    window.addEventListener("keydown", (event) => {
+      if (!selected()) return;
+      const step = event.shiftKey ? 10 : event.altKey ? 0.1 : 1;
+      const keys = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step]
+      };
+      if (!keys[event.key]) return;
+      event.preventDefault();
+      const [dx, dy] = keys[event.key];
+      moveSelected(dx, dy);
+    });
+
+    async function openTemplate() {
+      if ("showOpenFilePicker" in window) {
+        try {
+          const [handle] = await window.showOpenFilePicker({
+            types: [{
+              description: "AviUtl template",
+              accept: { "text/plain": [".object", ".exo", ".txt"] }
+            }],
+            multiple: false
+          });
+          const file = await handle.getFile();
+          await loadFile(file, handle);
+          return;
+        } catch (error) {
+          if (error.name === "AbortError") return;
+          setStatus("ブラウザのファイル API が使えないため、通常のファイル選択に切り替えます");
+        }
+      }
+      $("fileInput").click();
+    }
+
+    async function openFallbackFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      await loadFile(file, null);
+      event.target.value = "";
+    }
+
+    async function loadFile(file, handle) {
+      const type = detectType(file.name);
+      state.encoding = type === "exo" ? "shift_jis" : "utf-8";
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const split = splitRawLines(bytes);
+      const text = new TextDecoder(state.encoding).decode(bytes);
+      state.fileName = file.name;
+      state.fileHandle = handle;
+      state.originalText = text;
+      state.rawLines = split.lines;
+      state.lineEndings = split.endings;
+      state.lines = split.lines.map((line) => new TextDecoder(state.encoding).decode(line));
+      state.modifiedLines = new Set();
+      state.selectedId = null;
+      state.dirty = false;
+      if ($("templateType").value === "auto") {
+        $("templateType").dataset.detected = type;
+      }
+      parseTemplate();
+      inferViewport();
+      updateButtons();
+      render();
+      setStatus(`${file.name} を読み込みました (${state.items.length} 件の座標)`);
+    }
+
+    function splitRawLines(bytes) {
+      const lines = [];
+      const endings = [];
+      let start = 0;
+      for (let i = 0; i < bytes.length; i++) {
+        if (bytes[i] !== 10) continue;
+        let end = i;
+        let ending = "\n";
+        if (end > start && bytes[end - 1] === 13) {
+          end -= 1;
+          ending = "\r\n";
+        }
+        lines.push(bytes.slice(start, end));
+        endings.push(ending);
+        start = i + 1;
+      }
+      if (start < bytes.length || bytes.length === 0) {
+        lines.push(bytes.slice(start));
+        endings.push("");
+      }
+      return { lines, endings };
+    }
+
+    function detectType(name) {
+      if ($("templateType").value !== "auto") return $("templateType").value;
+      if (/\.exo$/i.test(name)) return "exo";
+      return "object";
+    }
+
+    function activeType() {
+      if ($("templateType").value !== "auto") return $("templateType").value;
+      return $("templateType").dataset.detected || detectType(state.fileName);
+    }
+
+    function parseTemplate() {
+      const objectMap = new Map();
+      let current = null;
+      let currentEffect = "";
+      let currentResource = "";
+      let pendingX = null;
+
+      state.items = [];
+
+      for (let index = 0; index < state.lines.length; index++) {
+        const line = state.lines[index];
+        const section = line.match(/^\[(\d+)(?:\.(\d+))?\]$/);
+        if (section) {
+          const id = section[1];
+          if (!objectMap.has(id)) {
+            objectMap.set(id, {
+              id,
+              layer: "",
+              start: null,
+              end: null,
+              resource: "",
+              effects: []
+            });
+          }
+          current = objectMap.get(id);
+          currentEffect = "";
+          currentResource = current.resource || "";
+          pendingX = null;
+          continue;
+        }
+        if (!current) continue;
+
+        const kv = line.match(/^([^=]+)=(.*)$/);
+        if (!kv) continue;
+        const key = kv[1].trim();
+        const value = kv[2].trim();
+
+        if (key === "layer") current.layer = value;
+        if (key === "frame") {
+          const parts = value.split(",");
+          current.start = toNumber(parts[0]);
+          current.end = toNumber(parts[1]);
+        }
+        if (key === "start") current.start = toNumber(value);
+        if (key === "end") current.end = toNumber(value);
+        if (key === "effect.name" || key === "_name") currentEffect = value;
+        if (key === "ファイル" || key === "file") {
+          current.resource = value;
+          currentResource = value;
+        }
+
+        if (key === "X") {
+          pendingX = { lineIndex: index, raw: value, value: firstNumber(value) };
+        } else if (key === "Y" && pendingX && pendingX.value !== null) {
+          const y = firstNumber(value);
+          if (y !== null) {
+            const item = {
+              uid: `${current.id}:${pendingX.lineIndex}:${index}`,
+              objectId: current.id,
+              layer: current.layer,
+              start: current.start,
+              end: current.end,
+              effect: currentEffect,
+              resource: currentResource || current.resource || "",
+              xLine: pendingX.lineIndex,
+              yLine: index,
+              xRaw: pendingX.raw,
+              yRaw: value,
+              x: pendingX.value,
+              y
+            };
+            state.items.push(item);
+            current.effects.push(item);
+          }
+          pendingX = null;
+        }
+      }
+    }
+
+    function firstNumber(value) {
+      const match = value.match(/[-+]?\d+(?:\.\d+)?/);
+      return match ? Number(match[0]) : null;
+    }
+
+    function toNumber(value) {
+      const num = Number(String(value).trim());
+      return Number.isFinite(num) ? num : null;
+    }
+
+    function replaceFirstNumber(raw, value) {
+      const formatted = Number(value).toFixed(2);
+      return raw.replace(/[-+]?\d+(?:\.\d+)?/, formatted);
+    }
+
+    function inferViewport() {
+      const chosen = $("canvasSize").value;
+      if (chosen !== "auto") {
+        const [width, height] = chosen.split("x").map(Number);
+        state.viewport = { width, height };
+      } else {
+        const widthLine = state.lines.find((line) => /^width=/.test(line));
+        const heightLine = state.lines.find((line) => /^height=/.test(line));
+        const width = widthLine ? Number(widthLine.split("=")[1]) : null;
+        const height = heightLine ? Number(heightLine.split("=")[1]) : null;
+        if (width && height) {
+          state.viewport = { width, height };
+        } else if (/4-3|1440x1080/i.test(state.fileName)) {
+          state.viewport = { width: 1440, height: 1080 };
+        } else {
+          state.viewport = { width: 1920, height: 1080 };
+        }
+      }
+      resizeCanvas();
+    }
+
+    function resizeCanvas() {
+      const zoom = Number($("zoom").value);
+      canvas.width = Math.round(state.viewport.width * zoom);
+      canvas.height = Math.round(state.viewport.height * zoom);
+    }
+
+    function render() {
+      resizeCanvas();
+      drawStage();
+      drawRows();
+      syncSelectedInputs();
+    }
+
+    function visibleItems() {
+      const frame = Number($("frameFilter").value);
+      const layer = $("layerFilter").value.trim();
+      const query = $("search").value.trim().toLowerCase();
+      const all = $("showAll").value === "all";
+      return state.items.filter((item) => {
+        if (!all && Number.isFinite(frame)) {
+          if (item.start !== null && item.end !== null && (frame < item.start || frame > item.end)) {
+            return false;
+          }
+        }
+        if (layer && item.layer !== layer) return false;
+        if (query) {
+          const haystack = `${item.objectId} ${item.layer} ${item.effect} ${item.resource}`.toLowerCase();
+          if (!haystack.includes(query)) return false;
+        }
+        return true;
+      });
+    }
+
+    function drawStage() {
+      const zoom = Number($("zoom").value);
+      const { width, height } = state.viewport;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#151922";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = "rgba(255,255,255,.12)";
+      ctx.lineWidth = 1;
+      for (let x = width / 2 % 120; x < width; x += 120) {
+        ctx.beginPath();
+        ctx.moveTo(x * zoom, 0);
+        ctx.lineTo(x * zoom, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = height / 2 % 120; y < height; y += 120) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * zoom);
+        ctx.lineTo(canvas.width, y * zoom);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,.48)";
+      ctx.beginPath();
+      ctx.moveTo(width / 2 * zoom, 0);
+      ctx.lineTo(width / 2 * zoom, canvas.height);
+      ctx.moveTo(0, height / 2 * zoom);
+      ctx.lineTo(canvas.width, height / 2 * zoom);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,.70)";
+      ctx.fillText(`${width}x${height} / ${activeType()}`, 12, 22);
+
+      const items = visibleItems();
+      for (const item of items) {
+        drawItem(item, zoom);
+      }
+    }
+
+    function drawItem(item, zoom) {
+      const point = toCanvas(item.x, item.y, zoom);
+      const selectedItem = item.uid === state.selectedId;
+      const w = selectedItem ? 84 : 66;
+      const h = selectedItem ? 42 : 34;
+      const x = point.x - w / 2;
+      const y = point.y - h / 2;
+
+      ctx.fillStyle = selectedItem ? "rgba(255,90,145,.24)" : "rgba(0,169,199,.20)";
+      ctx.strokeStyle = selectedItem ? "#ff5a91" : "#00a9c7";
+      ctx.lineWidth = selectedItem ? 3 : 1.5;
+      roundRect(ctx, x, y, w, h, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = selectedItem ? "#ffffff" : "rgba(255,255,255,.90)";
+      ctx.font = selectedItem ? "bold 12px system-ui" : "11px system-ui";
+      const label = `${item.objectId}`;
+      ctx.fillText(label, x + 7, y + 15);
+      ctx.font = "10px system-ui";
+      ctx.fillText(`L${item.layer || "-"}`, x + 7, y + 29);
+    }
+
+    function roundRect(context, x, y, width, height, radius) {
+      context.beginPath();
+      context.moveTo(x + radius, y);
+      context.arcTo(x + width, y, x + width, y + height, radius);
+      context.arcTo(x + width, y + height, x, y + height, radius);
+      context.arcTo(x, y + height, x, y, radius);
+      context.arcTo(x, y, x + width, y, radius);
+      context.closePath();
+    }
+
+    function toCanvas(x, y, zoom = Number($("zoom").value)) {
+      return {
+        x: (state.viewport.width / 2 + x) * zoom,
+        y: (state.viewport.height / 2 + y) * zoom
+      };
+    }
+
+    function fromCanvas(x, y, zoom = Number($("zoom").value)) {
+      return {
+        x: x / zoom - state.viewport.width / 2,
+        y: y / zoom - state.viewport.height / 2
+      };
+    }
+
+    function drawRows() {
+      const tbody = $("rows");
+      const items = visibleItems();
+      tbody.replaceChildren();
+      for (const item of items) {
+        const tr = document.createElement("tr");
+        if (item.uid === state.selectedId) tr.classList.add("selected");
+        tr.addEventListener("click", () => selectItem(item.uid));
+        tr.innerHTML = `
+          <td>${escapeHtml(item.objectId)}</td>
+          <td>${escapeHtml(item.layer || "-")}</td>
+          <td class="name-cell" title="${escapeHtml(item.resource || item.effect)}">${escapeHtml(item.resource || item.effect || "-")}</td>
+          <td>${item.x.toFixed(2)}</td>
+          <td>${item.y.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function selectItem(uid) {
+      state.selectedId = uid;
+      render();
+    }
+
+    function selected() {
+      return state.items.find((item) => item.uid === state.selectedId) || null;
+    }
+
+    function syncSelectedInputs() {
+      const item = selected();
+      const disabled = !item;
+      $("xInput").disabled = disabled;
+      $("yInput").disabled = disabled;
+      $("centerButton").disabled = disabled;
+      if (!item) {
+        $("selectedLabel").textContent = "未選択";
+        $("xInput").value = "";
+        $("yInput").value = "";
+        return;
+      }
+      $("selectedLabel").textContent = `選択中: [${item.objectId}] layer ${item.layer || "-"} / ${item.effect || "座標"}`;
+      if (document.activeElement !== $("xInput")) $("xInput").value = item.x.toFixed(2);
+      if (document.activeElement !== $("yInput")) $("yInput").value = item.y.toFixed(2);
+    }
+
+    function applySelectedInputs() {
+      const item = selected();
+      if (!item) return;
+      const x = Number($("xInput").value);
+      const y = Number($("yInput").value);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      setItemPosition(item, x, y);
+      render();
+    }
+
+    function setItemPosition(item, x, y) {
+      item.x = x;
+      item.y = y;
+      state.lines[item.xLine] = state.lines[item.xLine].replace(/^(X=)(.*)$/, (_, key, raw) => {
+        item.xRaw = replaceFirstNumber(raw, x);
+        return key + item.xRaw;
+      });
+      state.lines[item.yLine] = state.lines[item.yLine].replace(/^(Y=)(.*)$/, (_, key, raw) => {
+        item.yRaw = replaceFirstNumber(raw, y);
+        return key + item.yRaw;
+      });
+      state.modifiedLines.add(item.xLine);
+      state.modifiedLines.add(item.yLine);
+      state.dirty = true;
+      updateButtons();
+      setStatus(`変更済み: [${item.objectId}] X=${x.toFixed(2)} Y=${y.toFixed(2)}`);
+    }
+
+    function moveSelected(dx, dy) {
+      const item = selected();
+      if (!item) return;
+      setItemPosition(item, item.x + dx, item.y + dy);
+      render();
+    }
+
+    function centerSelected() {
+      const item = selected();
+      if (!item) return;
+      setItemPosition(item, 0, 0);
+      render();
+    }
+
+    function onPointerDown(event) {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const hit = hitTest(x, y);
+      if (!hit) return;
+      selectItem(hit.uid);
+      canvas.setPointerCapture(event.pointerId);
+      state.drag = {
+        pointerId: event.pointerId,
+        uid: hit.uid,
+        startX: x,
+        startY: y,
+        originX: hit.x,
+        originY: hit.y
+      };
+    }
+
+    function onPointerMove(event) {
+      if (!state.drag || state.drag.pointerId !== event.pointerId) return;
+      const item = selected();
+      if (!item) return;
+      const rect = canvas.getBoundingClientRect();
+      const zoom = Number($("zoom").value);
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const dx = (x - state.drag.startX) / zoom;
+      const dy = (y - state.drag.startY) / zoom;
+      setItemPosition(item, state.drag.originX + dx, state.drag.originY + dy);
+      render();
+    }
+
+    function onPointerUp(event) {
+      if (state.drag && state.drag.pointerId === event.pointerId) {
+        state.drag = null;
+      }
+    }
+
+    function hitTest(x, y) {
+      const zoom = Number($("zoom").value);
+      const items = visibleItems();
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        const point = toCanvas(item.x, item.y, zoom);
+        if (Math.abs(x - point.x) <= 42 && Math.abs(y - point.y) <= 24) {
+          return item;
+        }
+      }
+      return null;
+    }
+
+    async function saveTemplate() {
+      if (!state.lines.length) return;
+      const text = currentText();
+      if (state.fileHandle && "createWritable" in state.fileHandle) {
+        const writable = await state.fileHandle.createWritable();
+        await writable.write(encodeText(text));
+        await writable.close();
+        state.originalText = text;
+        state.dirty = false;
+        updateButtons();
+        setStatus(`${state.fileName} を保存しました`);
+      } else {
+        downloadTemplate();
+      }
+    }
+
+    function downloadTemplate() {
+      if (!state.lines.length) return;
+      const blob = new Blob([encodeText(currentText())], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const suffix = state.dirty ? ".edited" : "";
+      link.href = url;
+      link.download = state.fileName.replace(/(\.[^.]+)?$/, `${suffix}$1`);
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function encodeText(text) {
+      if (state.rawLines.length) {
+        return buildPreservedBytes();
+      }
+      return new TextEncoder().encode(text);
+    }
+
+    function buildPreservedBytes() {
+      const chunks = [];
+      let total = 0;
+      for (let i = 0; i < state.lines.length; i++) {
+        const lineBytes = state.modifiedLines.has(i)
+          ? asciiEncode(state.lines[i])
+          : state.rawLines[i] || asciiEncode(state.lines[i]);
+        const endingBytes = asciiEncode(state.lineEndings[i] || "");
+        chunks.push(lineBytes, endingBytes);
+        total += lineBytes.length + endingBytes.length;
+      }
+      const output = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        output.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return output;
+    }
+
+    function asciiEncode(text) {
+      const bytes = new Uint8Array(text.length);
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        bytes[i] = code <= 0x7f ? code : 0x3f;
+      }
+      return bytes;
+    }
+
+    function resetTemplate() {
+      if (!state.originalText) return;
+      state.lines = state.originalText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+      state.modifiedLines = new Set();
+      state.dirty = false;
+      parseTemplate();
+      state.selectedId = null;
+      updateButtons();
+      render();
+      setStatus("読み込み直後の状態に戻しました");
+    }
+
+    function currentText() {
+      return state.lines.join("\r\n");
+    }
+
+    function updateButtons() {
+      const hasFile = state.lines.length > 0;
+      $("saveButton").disabled = !hasFile || !state.dirty;
+      $("downloadButton").disabled = !hasFile;
+      $("resetButton").disabled = !hasFile || !state.dirty;
+    }
+
+    function setStatus(message) {
+      $("status").textContent = message;
+    }
+
+    inferViewport();
+    drawStage();
+  </script>
+</body>
+</html>
