@@ -1,7 +1,8 @@
 # プロジェクト構成メモ
-
-このドキュメントは、`pjsekai-overlay-APPEND` の全体像と各ファイル・ディレクトリの役割を日本語でまとめたものです。  
-このリポジトリは、Sonolus 互換サーバーから譜面情報を取得し、プロセカ風の動画編集素材を AviUtl / AviUtl ExEdit2 向けに生成する Go 製 CLI ツールです。
+アセット生成ツールです。
+build_assets.exeを実行して、
+生成されたoutput/assetsフォルダとdependenciesフォルダをoverlay側の同名フォルダと差し替えて使います。
+dependenciesにはジャケット生成のexeが入ってますが、依存ファイルごと差し替える必要があるのでdependencies丸々変えてください。
 
 ## 全体の処理の流れ
 
