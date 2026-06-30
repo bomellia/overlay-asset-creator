@@ -441,6 +441,46 @@ def render_life_ui_asset(path: Path, args: argparse.Namespace, root: Path) -> Im
     _composite_fill(canvas, bar_draw_box, bar_radius, track)
     _draw_outline(canvas, bar_draw_box, bar_radius, _themed_color((139, 255, 226, 62), args, "accent", "life"), 1)
 
+    # The original v3 life panel has a pause button at the right edge. Keep its
+    # original position and proportions while matching the themed glass UI.
+    pause_box = (
+        round(width * 2037 / 2560),
+        round(height * 100 / 600),
+        round(width * 2492 / 2560),
+        round(height * 555 / 600),
+    )
+    pause_radius = (pause_box[2] - pause_box[0]) // 2
+    pause_shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 95))
+    pause_shadow.putalpha(
+        _rect_mask(
+            canvas.size,
+            (pause_box[0] + 10, pause_box[1] + 12, pause_box[2] + 10, pause_box[3] + 12),
+            pause_radius,
+        ).filter(ImageFilter.GaussianBlur(max(6, height // 35)))
+    )
+    canvas.alpha_composite(pause_shadow)
+    _composite_fill(canvas, pause_box, pause_radius, track)
+    _draw_outline(canvas, pause_box, pause_radius, outline, max(3, height // 75))
+
+    pause_bar_fill = text_fill
+    pause_bars = (
+        (2186, 225, 2243, 430),
+        (2287, 225, 2344, 430),
+    )
+    for x0, y0, x1, y1 in pause_bars:
+        pause_bar_box = (
+            round(width * x0 / 2560),
+            round(height * y0 / 600),
+            round(width * x1 / 2560),
+            round(height * y1 / 600),
+        )
+        _composite_fill(
+            canvas,
+            pause_bar_box,
+            max(3, (pause_bar_box[2] - pause_bar_box[0]) // 7),
+            pause_bar_fill,
+        )
+
     heart_box = (
         outer[0] + round(width * 0.055),
         bar_box[1] - round(height * 0.045),
